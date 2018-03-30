@@ -1,0 +1,124 @@
+_______________________________________________________________________________
+
+    Como rodar o programa
+_______________________________________________________________________________
+
+Primeiramente, instalar biblioteca ARIA e simulador MobileSim
+
+Depois, há duas formas de compilar o programa:
+
+ -- Usando o Makefile
+
+vai até a pasta phir2framework e digite make
+o programa vai ser compilado em uma pasta ../build-make (que fica ao lado da pasta 'phir2framework')
+para rodar digite ../build-make/program
+
+ -- Usando o QtCreator
+
+vai até a pasta phir2framework e abre o arquivo PhiR2Framework.pro no QtCreator
+Compila e roda dentro da IDE
+(os arquivos gerados estarão em ../build-PhiR2Framework-Desktop-Debug ou ../build-PhiR2Framework-Desktop-Release)
+
+OBS: antes de rodar o programa é preciso abrir o simulador MobileSIM (ou ligar o robô real, se for o caso).
+No simulador é preciso escolher um mapa. Use o mapa 3loops.map, disponível no moodle.
+
+_______________________________________________________________________________
+
+      Instruções adicionais
+_______________________________________________________________________________
+
+---------------------
+INSTRUÇÕES ADICIONAIS
+---------------------
+
+Dependências do framework não comentadas
+ - Glut:      para gerenciamento de janelas, teclado, ...
+ - FreeImage: para salvamento de capturas da tela
+
+sudo apt-get install freeglut3-dev libfreeimage-dev
+
+----------------------------------------------------
+
+O framework foi desenvolvido em um Ubuntu 14.04, usando a biblioteca Aria versão 2.7.2 e simulador MobileSim 0.7.3.
+(ou seja, nesta versão de sis.op. tudo deve funcionar perfeitamente)
+
+Testes foram feitos em um Ubuntu 16.04, e ajustes tiveram que ser feitos para tudo funcionar direito.
+
+------ AJUSTES para Ubuntu 16.04 ------
+
+1. Instalação da ARIA
+
+  A versão 2.7.2 pode ser instalada normalmente.
+  Para isso descompacte o arquivo 'ARIA-2.7.2.tgz', vá até a pasta 'Aria-2.7.2' e digite
+    make
+  A compilação deverá ocorrer sem problemas.
+  No entanto, para a instalação da biblioteca ser feita no caminho /usr/local/Aria é preciso digitar
+    sudo make install
+
+  PROBLEMA: durante os testes no ubuntu 16.04 essa operação resultou em erro, pois a sintaxe do comando 'find' mudou do ubuntu 14.04 para o 16.04
+  SOLUÇÃO: apagar a linha 623 do arquivo 'Makefile' dentro da pasta 'Aria-2.7.2'. Essa linha, que causa o erro, diz:
+     -or -perm +1  -exec $(INSTALL) -D --strip -m 777 \{\}  $(DESTDIR)$(INSTALL_DIR)/\{\} \; \
+
+  Apagando essa linha, a biblioteca instalou normalmente.
+
+2. Instalação do MobileSim
+
+  A versão que foi colocada no moodle já vem pré-compilada, e no Ubuntu 14.04 é possível rodá-la diretamente.
+  - No Ubuntu 14.04:
+  Basta descompactar o arquivo 'MobileSim-0.7.3+x86_64+gcc4.6.tgz', ir dentro da pasta 'MobileSim-0.7.3' e rodar ./MobileSim
+
+  - No Ubuntu 16.04:
+  Não funcionou o comando acima, então instalei o simulador de outra forma.
+  Baixei a versão 'mobilesim_0.7.3+ubuntu12+gcc4.6_amd64.deb' e instalei via:
+    dpkg -i mobilesim_0.7.3+ubuntu12+gcc4.6_amd64.deb
+
+  Isso funcionou normalmente, aí pra rodar é só abrir o programa MobileSim e depois selecionar um mapa (por exemplo: '3loops.map')
+
+
+  ATENÇÃO: testei a versão mais nova do MobileSim (0.9.8). Instalou normalmente, mas o programa não abriu o mapa de forma correta. Suponho que deve ter mudado a sintaxe da descrição dos arquivos .map. Portanto, utilize a versão antiga.
+
+--------------------------
+
+  CORREÇÃO DE ERRO DE LINKAGEM DURANTE EXECUÇÃO
+
+A biblioteca Aria não é instalada num caminho padrão, então é preciso avisar o sistema operacional onde procurar essa lib antes da execução.
+
+Caso contrario ocorrerá um erro de linkagem dinâmica na execução do programa:
+./program: error while loading shared libraries: libAria.so: cannot open shared object file: No such file or directory
+
+Para corrigir isso, basta digitar no terminal antes de executar:
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/CAMINHO_CORRETO_ARIA/lib
+
+Ou, para evitar ter que fazer isso todas as vezes que for rodar o programa, dá para adicionar uma única vez esse comando no arquivo de configuração .bashrc (que é rodado todas as vezes que um terminal é aberto)
+
+Abre o arquivo .bashrc:
+gedit ~/.bashrc
+
+E insere no final dele a linha:
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/CAMINHO_CORRETO_ARIA/lib
+
+substituindo o caminho correto em CAMINHO_CORRETO_ARIA
+que será algo como /usr/local/Aria ou /home/renan/Downloads/Aria-2.7.2
+
+_______________________________________________________________________________
+
+      Controles do framework
+_______________________________________________________________________________
+
+-- modos de movimentação
+1 : controle manual simples (velocidades fixas)
+2 : controle manual velocidade linear (CIMA e BAIXO) e vel. angular (ESQ e DIR)
+3 : avoid obstacles
+4 : wall following
+
+CIMA, BAIXO, ESQ, DIR : move o robô
+
+W, A, S, D : move a camera
+
++ e - : altera zoom da camera
+L     : fixa a camera novamente sobre o robô, ou deixa a camera fixa no ponto atual do mapa onde o robô está
+
+R     : altera visualização dos sensores (sonar cone -> sonar linha -> laser linha -> laser area -> somente robô)
+G     : mostra valor associado a cada celula do mapa
+
+ESC   : fecha programa
