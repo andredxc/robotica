@@ -464,6 +464,8 @@ void PioneerBase::setMovementVel(MovingDirection dir)
 
 void PioneerBase::setWheelsVelocity_fromLinAngVelocity(float linV, float angV)
 {
+    // b -> diâmetro do robõ
+    // (2.0) -> para obter o raio
     float b=0.38;
 
     vLeft_  = linV - angV*b/(2.0);
@@ -539,4 +541,3 @@ bool PioneerBase::readFromLog() {
 
     return false;
 }
-

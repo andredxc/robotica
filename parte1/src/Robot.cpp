@@ -124,34 +124,60 @@ void Robot::move(MovingDirection dir)
             std::cout << "stopping robot" << std::endl;
     }
 
-    if(motionMode_==MANUAL_SIMPLE)
+    if(motionMode_ == MANUAL_SIMPLE)
         base.setMovementSimple(dir);
-    else if(motionMode_==MANUAL_VEL)
+    else if(motionMode_ == MANUAL_VEL)
         base.setMovementVel(dir);
-    else if(motionMode_=WALLFOLLOW)
+    else if(motionMode_ == WALLFOLLOW)
         if(dir==LEFT)
-            isFollowingLeftWall_=true;
+            isFollowingLeftWall_ = true;
         else if(dir==RIGHT)
-            isFollowingLeftWall_=false;
+            isFollowingLeftWall_ = false;
 }
 
 void Robot::wanderAvoidingCollisions()
 {
-    float minLeftSonar  = base.getMinSonarValueInRange(0,2);
-    float minFrontSonar = base.getMinSonarValueInRange(3,4);
-    float minRightSonar = base.getMinSonarValueInRange(5,7);
+    // Distância mínima para obstáculos em metros
+    float minFrontDistance = 0.7;
+    float linVel=0;
+    float angVel=0;
+
+    float minLeftSonar  = base.getMinSonarValueInRange(0,1);
+    float minFrontSonar = base.getMinSonarValueInRange(2,5);
+    float minRightSonar = base.getMinSonarValueInRange(4,7);
 
     float minLeftLaser  = base.getMinLaserValueInRange(0,74);
     float minFrontLaser = base.getMinLaserValueInRange(75,105);
     float minRightLaser = base.getMinLaserValueInRange(106,180);
 
-    float linVel=0;
-    float angVel=0;
+    // Desvio de obstáculos
+    fprintf(stderr, "minFrontLaser = %f, minFrontSonar = %f\n", minFrontLaser, minFrontSonar);
 
-    //TODO - implementar desvio de obstaculos
-
-
-
+    if(minFrontLaser <= minFrontDistance || minFrontSonar <= minFrontDistance){
+        // Obstáculo próximo
+        if(minLeftSonar >= minRightSonar && minLeftLaser >= minRightLaser){
+            // Caminho a esquerda está mais livre
+            linVel = 0;
+            angVel = 0.4;
+            fprintf(stderr, "Turning left\n");
+        }
+        else if(minRightSonar > minLeftSonar && minRightLaser > minLeftLaser){
+            // Caminho a direita está mais livre
+            linVel = 0;
+            angVel = -0.4;
+            fprintf(stderr, "Turning right\n");
+        }
+        else{
+            // Dados inconsistentes
+            linVel = 0;
+            angVel = 0;
+        }
+    }
+    else{
+        // Sem obstáculos
+        linVel = 30;
+        angVel = 0;
+    }
 
     base.setWheelsVelocity_fromLinAngVelocity(linVel, angVel);
 }
@@ -280,4 +306,3 @@ const Pose& Robot::getCurrentPose()
 {
     return currentPose_;
 }
-

@@ -12,7 +12,7 @@ MKDIR_P = mkdir -p
 PREFIX_OBJS = $(patsubst %.o,${OBJ_DIR}/%.o,$(OBJS))
 OBJ_DIR=./obj
 
-EXEC = program
+EXEC = trab
 
 all: $(EXEC)
 
@@ -28,4 +28,3 @@ clean:
 	@echo "Limpando..."
 	@rm -f $(PREFIX_OBJS) $(EXEC) *~
 	@rm -f $(OBJ_DIR)/*
-
