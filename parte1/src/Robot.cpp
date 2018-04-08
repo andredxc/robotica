@@ -184,6 +184,13 @@ void Robot::wanderAvoidingCollisions()
 
 void Robot::wallFollow()
 {
+    static std::vector<float> cteVector;
+    float curCte;
+    float distanceToWall = 0.5;
+    float derivative, integral;
+    float tp, td, ti;
+    int i;
+
     float minLeftSonar  = base.getMinSonarValueInRange(0,2);
     float minFrontSonar = base.getMinSonarValueInRange(3,4);
     float minRightSonar = base.getMinSonarValueInRange(5,7);
@@ -192,18 +199,40 @@ void Robot::wallFollow()
     float minFrontLaser = base.getMinLaserValueInRange(75,105);
     float minRightLaser = base.getMinLaserValueInRange(106,180);
 
-    float linVel=0;
+    float linVel = 5;
     float angVel=0;
 
-    if(isFollowingLeftWall_)
+    if(isFollowingLeftWall_){
         std::cout << "Following LEFT wall" << std::endl;
-    else
+        curCte = minLeftSonar - distanceToWall;
+    }
+    else{
         std::cout << "Following RIGHT wall" << std::endl;
+        curCte = minRightSonar - distanceToWall;
+    }
+    cteVector.push_back(curCte);
 
-    //TODO - implementar wall following usando PID
+    // Calcula o termo da derivada
+    if(cteVector.size() >= 2){
+        derivative = cteVector.at(cteVector.size() - 1) - cteVector.at(cteVector.size() - 2);
+    }
+    else{
+        derivative = 0;
+    }
 
+    // Calcula o termo da integral
+    integral = 0;
+    for(i = 0; i < cteVector.size(); i++){
+        integral += cteVector.at(i);
+    }
 
-
+    // Caclula a expressão
+    tp = 0.2;
+    td = 3;
+    ti = 0.005;
+    angVel = - (tp*curCte) - (td*derivative) - (ti*integral);
+    fprintf(stderr, "distanceToWall: %f, CTE: %f, derivada: %f, integral: %f\n", distanceToWall, curCte, derivative, integral);
+    fprintf(stderr, "1: %f, 2: %f, 3: %f\n", - tp*curCte, - td*derivative, - ti*integral);
 
     base.setWheelsVelocity_fromLinAngVelocity(linVel, angVel);
 }
