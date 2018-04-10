@@ -186,29 +186,33 @@ void Robot::wallFollow()
 {
     static std::vector<float> cteVector;
     float curCte;
-    float distanceToWall = 0.5;
+    float distanceToWall = 0.7;
+    float safetyDistance = 0.3;
     float derivative, integral;
     float tp, td, ti;
     int i;
 
-    float minLeftSonar  = base.getMinSonarValueInRange(0,2);
-    float minFrontSonar = base.getMinSonarValueInRange(3,4);
-    float minRightSonar = base.getMinSonarValueInRange(5,7);
+    float minLeftSonar  = base.getMinSonarValueInRange(0,1);
+    float minFrontSonar = base.getMinSonarValueInRange(2,5);
+    float minRightSonar = base.getMinSonarValueInRange(6,7);
 
     float minLeftLaser  = base.getMinLaserValueInRange(0,74);
     float minFrontLaser = base.getMinLaserValueInRange(75,105);
     float minRightLaser = base.getMinLaserValueInRange(106,180);
 
-    float linVel = 5;
-    float angVel=0;
+    float minLeft = (minLeftLaser < minLeftSonar) ? minLeftLaser: minLeftSonar;
+    float minRight = (minRightLaser < minRightSonar) ? minRightLaser: minRightSonar;
+
+    float linVel = 0.2;
+    float angVel = 0;
 
     if(isFollowingLeftWall_){
         std::cout << "Following LEFT wall" << std::endl;
-        curCte = minLeftSonar - distanceToWall;
+        curCte = minLeft - distanceToWall;
     }
     else{
         std::cout << "Following RIGHT wall" << std::endl;
-        curCte = minRightSonar - distanceToWall;
+        curCte = minRight - distanceToWall;
     }
     cteVector.push_back(curCte);
 
@@ -227,12 +231,19 @@ void Robot::wallFollow()
     }
 
     // Caclula a expressão
-    tp = 0.2;
-    td = 3;
-    ti = 0.005;
+    tp = 0.4;
+    td = 20;
+    ti = 0.001;
     angVel = - (tp*curCte) - (td*derivative) - (ti*integral);
     fprintf(stderr, "distanceToWall: %f, CTE: %f, derivada: %f, integral: %f\n", distanceToWall, curCte, derivative, integral);
     fprintf(stderr, "1: %f, 2: %f, 3: %f\n", - tp*curCte, - td*derivative, - ti*integral);
+
+    if(base.getMinLaserValueInRange(0,180) <= safetyDistance && base.getMinSonarValueInRange(0,7) <= safetyDistance){
+        // Distancia de segurança
+        cteVector.clear();
+        linVel = 0;
+        angVel = 0.3;
+    }
 
     base.setWheelsVelocity_fromLinAngVelocity(linVel, angVel);
 }
