@@ -175,7 +175,7 @@ void Robot::wanderAvoidingCollisions()
     }
     else{
         // Sem obstáculos
-        linVel = 30;
+        linVel = 0.2;
         angVel = 0;
     }
 
