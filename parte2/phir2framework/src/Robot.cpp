@@ -4,6 +4,8 @@
 #include <cmath>
 #include <iostream>
 
+#define PI 3.14159265
+
 //////////////////////////////////////
 ///// CONSTRUCTORS & DESTRUCTORS /////
 //////////////////////////////////////
@@ -199,18 +201,22 @@ float Robot::getOccupancyFromLogOdds(float logodds)
 void Robot::mappingWithLogOddsUsingLaser()
 {
     float alpha = 0.1; //  10 cm
-    float beta = 0.5;  // 0.5 degrees
+    float beta = 1;  // 0.5 degrees
 
     int scale = grid->getMapScale();
     float maxRange = base.getMaxLaserRange();
     int maxRangeInt = maxRange*scale;
+    int i, celX, celY;
+    float phi, r;
+    float cossine, sine;
 
-    int robotX=currentPose_.x*scale;
-    int robotY=currentPose_.y*scale;
+    int robotX = currentPose_.x * scale;
+    int robotY = currentPose_.y * scale;
     float robotAngle = currentPose_.theta;
 
     // TODO: define fixed values of occupancy
-    float locc, lfree;
+    float locc = 0.9542 ;
+    float lfree = -0.9542;
 
     // how to access a grid cell
     Cell* c=grid->getCell(robotX,robotY);
@@ -220,6 +226,48 @@ void Robot::mappingWithLogOddsUsingLaser()
 
     // how to convert logodds to occupancy values
     c->occupancy = getOccupancyFromLogOdds(c->logodds);
+
+    // Pocc = 0.9
+    // Pfree = 0.1
+    for(i = 0; i < 180; i++){
+
+        phi = (90 - i) + robotAngle;
+        phi = normalizeAngleDEG(phi);
+
+        r = base.getMinLaserValueInRange(i, i);
+        cossine = cos(phi*PI/180);
+        sine = sin(phi*PI/180);
+        celX = (robotX + r*cossine) * scale;
+        celY = (robotY + r*sine) * scale;
+
+        c = grid->getCell(celX, celY);
+        if(c->logodds < 20){
+            c->logodds += locc;
+        }
+        c->occupancy = getOccupancyFromLogOdds(c->logodds);
+
+        if(i == 0 || i == 90 || i == 179){
+            fprintf(stderr, "Laser: %d, theta: %.2f, phi: %.2f, laserValue: %.2f, celX: %d, celY: %d\n", i, robotAngle, phi, base.getMinLaserValueInRange(i, i), celX, celY);
+        }
+
+        // fprintf(stderr, "robotX: %d, robotY: %d\n", robotX, robotY);
+
+        // r -= 0.1;
+        // while(r > 0){
+        //
+        //     celX = (r*cossine) * scale;
+        //     celY = (r*sine) * scale;
+        //
+        //     c = grid->getCell(celX, celY);
+        //     if(c->logodds > -20){
+        //         c->logodds += lfree;
+        //     }
+        //     c->occupancy = getOccupancyFromLogOdds(c->logodds);
+        //     r -= 0.1;
+        // }
+    }
+
+
 
 
     // TODO: update cells in the sensors' field-of-view
@@ -352,4 +400,3 @@ const Pose& Robot::getCurrentPose()
 {
     return currentPose_;
 }
-
