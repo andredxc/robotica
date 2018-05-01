@@ -27,7 +27,9 @@ $(EXEC): $(OBJS)
 	@echo "\nLinkando $(EXEC)\n"
 	@$(CXX) -o ${OUT_DIR}/$(EXEC) $(PREFIX_OBJS) $(LFLAGS)
 
+run:
+	../build-make/program
+	
 clean:
 	@echo "Limpando..."
 	@rm -f $(PREFIX_OBJS) ${OUT_DIR}/$(EXEC) *~
-

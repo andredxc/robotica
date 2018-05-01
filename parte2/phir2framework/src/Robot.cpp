@@ -144,47 +144,113 @@ void Robot::move(MovingDirection dir)
 
 void Robot::wanderAvoidingCollisions()
 {
-    float minLeftSonar  = base.getMinSonarValueInRange(0,2);
-    float minFrontSonar = base.getMinSonarValueInRange(3,4);
-    float minRightSonar = base.getMinSonarValueInRange(5,7);
+    // Distância mínima para obstáculos em metros
+    float minFrontDistance = 0.7;
+    float linVel=0;
+    float angVel=0;
+
+    float minLeftSonar  = base.getMinSonarValueInRange(0,1);
+    float minFrontSonar = base.getMinSonarValueInRange(2,5);
+    float minRightSonar = base.getMinSonarValueInRange(4,7);
 
     float minLeftLaser  = base.getMinLaserValueInRange(0,74);
     float minFrontLaser = base.getMinLaserValueInRange(75,105);
     float minRightLaser = base.getMinLaserValueInRange(106,180);
 
-    float linVel=0;
-    float angVel=0;
+    // Desvio de obstáculos
+    fprintf(stderr, "minFrontLaser = %f, minFrontSonar = %f\n", minFrontLaser, minFrontSonar);
 
-    //TODO - implementar desvio de obstaculos
-
-
-
+    if(minFrontLaser <= minFrontDistance || minFrontSonar <= minFrontDistance){
+        // Obstáculo próximo
+        if(minLeftSonar >= minRightSonar && minLeftLaser >= minRightLaser){
+            // Caminho a esquerda está mais livre
+            linVel = 0;
+            angVel = 0.4;
+            fprintf(stderr, "Turning left\n");
+        }
+        else if(minRightSonar > minLeftSonar && minRightLaser > minLeftLaser){
+            // Caminho a direita está mais livre
+            linVel = 0;
+            angVel = -0.4;
+            fprintf(stderr, "Turning right\n");
+        }
+        else{
+            // Dados inconsistentes
+            linVel = 0;
+            angVel = 0;
+        }
+    }
+    else{
+        // Sem obstáculos
+        linVel = 0.2;
+        angVel = 0;
+    }
 
     base.setWheelsVelocity_fromLinAngVelocity(linVel, angVel);
 }
 
 void Robot::wallFollow()
 {
-    float minLeftSonar  = base.getMinSonarValueInRange(0,2);
-    float minFrontSonar = base.getMinSonarValueInRange(3,4);
-    float minRightSonar = base.getMinSonarValueInRange(5,7);
+    static std::vector<float> cteVector;
+    float curCte;
+    float distanceToWall = 0.7;
+    float safetyDistance = 0.3;
+    float derivative, integral;
+    float tp, td, ti;
+    int i;
+
+    float minLeftSonar  = base.getMinSonarValueInRange(0,1);
+    float minFrontSonar = base.getMinSonarValueInRange(2,5);
+    float minRightSonar = base.getMinSonarValueInRange(6,7);
 
     float minLeftLaser  = base.getMinLaserValueInRange(0,74);
     float minFrontLaser = base.getMinLaserValueInRange(75,105);
     float minRightLaser = base.getMinLaserValueInRange(106,180);
 
-    float linVel=0;
-    float angVel=0;
+    float minLeft = (minLeftLaser < minLeftSonar) ? minLeftLaser: minLeftSonar;
+    float minRight = (minRightLaser < minRightSonar) ? minRightLaser: minRightSonar;
 
-    if(isFollowingLeftWall_)
+    float linVel = 0.2;
+    float angVel = 0;
+
+    if(isFollowingLeftWall_){
         std::cout << "Following LEFT wall" << std::endl;
-    else
+        curCte = minLeft - distanceToWall;
+    }
+    else{
         std::cout << "Following RIGHT wall" << std::endl;
+        curCte = minRight - distanceToWall;
+    }
+    cteVector.push_back(curCte);
 
-    //TODO - implementar wall following usando PID
+    // Calcula o termo da derivada
+    if(cteVector.size() >= 2){
+        derivative = cteVector.at(cteVector.size() - 1) - cteVector.at(cteVector.size() - 2);
+    }
+    else{
+        derivative = 0;
+    }
 
+    // Calcula o termo da integral
+    integral = 0;
+    for(i = 0; i < cteVector.size(); i++){
+        integral += cteVector.at(i);
+    }
 
+    // Caclula a expressão
+    tp = 0.4;
+    td = 20;
+    ti = 0.001;
+    angVel = - (tp*curCte) - (td*derivative) - (ti*integral);
+    fprintf(stderr, "distanceToWall: %f, CTE: %f, derivada: %f, integral: %f\n", distanceToWall, curCte, derivative, integral);
+    fprintf(stderr, "1: %f, 2: %f, 3: %f\n", - tp*curCte, - td*derivative, - ti*integral);
 
+    if(base.getMinLaserValueInRange(0,180) <= safetyDistance && base.getMinSonarValueInRange(0,7) <= safetyDistance){
+        // Distancia de segurança
+        cteVector.clear();
+        linVel = 0;
+        angVel = 0.3;
+    }
 
     base.setWheelsVelocity_fromLinAngVelocity(linVel, angVel);
 }
@@ -214,7 +280,8 @@ void Robot::mappingWithLogOddsUsingLaser()
     int robotY = currentPose_.y * scale;
     float robotAngle = currentPose_.theta;
 
-    // TODO: define fixed values of occupancy
+    // Pocc = 0.9
+    // Pfree = 0.1
     float locc = 0.9542 ;
     float lfree = -0.9542;
 
@@ -227,8 +294,6 @@ void Robot::mappingWithLogOddsUsingLaser()
     // how to convert logodds to occupancy values
     c->occupancy = getOccupancyFromLogOdds(c->logodds);
 
-    // Pocc = 0.9
-    // Pfree = 0.1
     for(i = 0; i < 180; i++){
 
         phi = (90 - i) + robotAngle;
@@ -237,8 +302,8 @@ void Robot::mappingWithLogOddsUsingLaser()
         r = base.getMinLaserValueInRange(i, i);
         cossine = cos(phi*PI/180);
         sine = sin(phi*PI/180);
-        celX = (robotX + r*cossine) * scale;
-        celY = (robotY + r*sine) * scale;
+        celX = robotX + (r*cossine) * scale;
+        celY = robotY + (r*sine) * scale;
 
         c = grid->getCell(celX, celY);
         if(c->logodds < 20){
@@ -247,59 +312,183 @@ void Robot::mappingWithLogOddsUsingLaser()
         c->occupancy = getOccupancyFromLogOdds(c->logodds);
 
         if(i == 0 || i == 90 || i == 179){
-            fprintf(stderr, "Laser: %d, theta: %.2f, phi: %.2f, laserValue: %.2f, celX: %d, celY: %d\n", i, robotAngle, phi, base.getMinLaserValueInRange(i, i), celX, celY);
+            fprintf(stderr, "Laser: %d, theta: %.2f, phi: %.2f, laserValue: %.2f, celX: %d, celY: %d\n", i, robotAngle, phi, r, celX, celY);
+            fprintf(stderr, "Cell logodds: %.2f\n", c->logodds);
         }
 
-        // fprintf(stderr, "robotX: %d, robotY: %d\n", robotX, robotY);
+        r -= 0.2;
+        while(r > 0){
 
-        // r -= 0.1;
-        // while(r > 0){
-        //
-        //     celX = (r*cossine) * scale;
-        //     celY = (r*sine) * scale;
-        //
-        //     c = grid->getCell(celX, celY);
-        //     if(c->logodds > -20){
-        //         c->logodds += lfree;
-        //     }
-        //     c->occupancy = getOccupancyFromLogOdds(c->logodds);
-        //     r -= 0.1;
-        // }
+            celX = robotX + (r*cossine) * scale;
+            celY = robotY + (r*sine) * scale;
+
+            c = grid->getCell(celX, celY);
+            if(c->logodds > -20){
+                c->logodds += lfree;
+            }
+            c->occupancy = getOccupancyFromLogOdds(c->logodds);
+            r -= 0.1;
+        }
     }
-
-
-
-
-    // TODO: update cells in the sensors' field-of-view
-    // ============================================================================
-    // you only need to check the cells at most maxRangeInt from the robot position
-    // that is, in the following square region:
-    //
-    //  (robotX-maxRangeInt,robotY+maxRangeInt)  -------  (robotX+maxRangeInt,robotY+maxRangeInt)
-    //                     |                       \                         |
-    //                     |                        \                        |
-    //                     |                         \                       |
-    //  (robotX-maxRangeInt,robotY-maxRangeInt)  -------  (robotX+maxRangeInt,robotY-maxRangeInt)
-
-
-
 }
 
 void Robot::mappingWithLogOddsUsingSonar()
 {
-    // TODO: update cells in the sensors' field-of-view
-    // Follow the example in mappingWithLogOddsUsingLaser()
+    float alpha = 0.1; //  10 cm
+    float beta = 30;  // 30 degrees
 
+    int scale = grid->getMapScale();
+    float maxRange = base.getMaxLaserRange();
+    int maxRangeInt = maxRange*scale;
+    int i, j, celX, celY;
+    float phi1, phi2, r, currentR;
+    float cossine1, cossine2, sine1, sine2;
 
+    int robotX = currentPose_.x * scale;
+    int robotY = currentPose_.y * scale;
+    float robotAngle = currentPose_.theta;
 
+    // Pocc = 0.9 - 0.9542
+    // Pfree = 0.4 - -0.176
+    float locc = 0.9542;
+    float lfree = -0.176;
+
+    // how to access a grid cell
+    Cell* c=grid->getCell(robotX,robotY);
+
+    // how to set occupancy of cell
+    c->logoddsSonar += lfree;
+
+    // how to convert logodds to occupancy values
+    c->occupancySonar = getOccupancyFromLogOdds(c->logoddsSonar);
+
+    for(i = 0; i < 8; i++){
+
+        switch(i){
+            case 0:
+                phi1 = 105;
+                phi2 = 75;
+                break;
+            case 1:
+                phi1 = 65;
+                phi2 = 35;
+                break;
+            case 2:
+                phi1 = 45;
+                phi2 = 15;
+                break;
+            case 3:
+                phi1 = 25;
+                phi2 = -15;
+                break;
+            case 4:
+                phi1 = 5;
+                phi2 = -25;
+                break;
+            case 5:
+                phi1 = -15;
+                phi2 = -45;
+                break;
+            case 6:
+                phi1 = -35;
+                phi2 = -65;
+                break;
+            case 7:
+                phi1 = -75;
+                phi2 = -105;
+                break;
+        }
+
+        r = base.getMinSonarValueInRange(i, i);
+        cossine1 = cos(phi1*PI/180);
+        sine1 = sin(phi1*PI/180);
+
+        for(j = 0; j < 30; j++){
+            cossine1 = cos((phi1 + robotAngle - j)*PI/180);
+            sine1 = sin((phi1 + robotAngle - j)*PI/180);
+            celX = robotX + (r*cossine1) * scale;
+            celY = robotY + (r*sine1) * scale;
+            c = grid->getCell(celX, celY);
+            if(c->logoddsSonar < 20){
+                c->logoddsSonar += locc;
+            }
+            c->occupancySonar = getOccupancyFromLogOdds(c->logoddsSonar);
+            if(j == 14 && i == 3){
+                fprintf(stderr, "Sonar: %d, theta: %.2f, phi: %.2f, sonarValue: %.2f, celX: %d, celY: %d\n", i, robotAngle, phi1, r, celX, celY);
+                fprintf(stderr, "Cell logodds: %.2f\n", c->logoddsSonar);
+            }
+
+            currentR = r - 0.2;
+            while(currentR > 0){
+
+                celX = robotX + (currentR*cossine1) * scale;
+                celY = robotY + (currentR*sine1) * scale;
+
+                c = grid->getCell(celX, celY);
+                if(c->logoddsSonar > -20){
+                    c->logoddsSonar += lfree;
+                }
+                c->occupancySonar = getOccupancyFromLogOdds(c->logoddsSonar);
+                currentR -= 0.1;
+            }
+        }
+    }
 }
 
 void Robot::mappingWithHIMMUsingLaser()
 {
-    // TODO: update cells in the sensors' field-of-view
-    // Follow the example in mappingWithLogOddsUsingLaser()
+    float alpha = 0.1; //  10 cm
+    float beta = 1;  // 0.5 degrees
 
+    int scale = grid->getMapScale();
+    float maxRange = base.getMaxLaserRange();
+    int maxRangeInt = maxRange*scale;
+    int i, celX, celY;
+    float phi, r;
+    float cossine, sine;
 
+    int robotX = currentPose_.x * scale;
+    int robotY = currentPose_.y * scale;
+    float robotAngle = currentPose_.theta;
+    Cell *c;
+
+    for(i = 0; i < 180; i++){
+
+        phi = (90 - i) + robotAngle;
+        phi = normalizeAngleDEG(phi);
+
+        r = base.getMinLaserValueInRange(i, i);
+        cossine = cos(phi*PI/180);
+        sine = sin(phi*PI/180);
+        celX = robotX + (r*cossine) * scale;
+        celY = robotY + (r*sine) * scale;
+
+        c = grid->getCell(celX, celY);
+        if(c->himm > 12){
+            c->himm = 15;
+        }
+        else{
+            c->himm += 3;
+        }
+
+        if(i == 0 || i == 90 || i == 179){
+            fprintf(stderr, "Laser: %d, theta: %.2f, phi: %.2f, laserValue: %.2f, celX: %d, celY: %d\n", i, robotAngle, phi, r, celX, celY);
+            fprintf(stderr, "Cell HIMM: %i\n", c->himm);
+        }
+
+        r -= 0.2;
+        while(r > 0){
+
+            celX = robotX + (r*cossine) * scale;
+            celY = robotY + (r*sine) * scale;
+
+            c = grid->getCell(celX, celY);
+            if(c->himm > 0){
+                c->himm -= 1;
+            }
+            r -= 0.1;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////
