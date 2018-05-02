@@ -341,15 +341,15 @@ void Robot::mappingWithLogOddsUsingSonar()
     float maxRange = base.getMaxLaserRange();
     int maxRangeInt = maxRange*scale;
     int i, j, celX, celY;
-    float phi1, phi2, r, currentR;
+    float phi, r, currentR;
     float cossine1, cossine2, sine1, sine2;
 
     int robotX = currentPose_.x * scale;
     int robotY = currentPose_.y * scale;
     float robotAngle = currentPose_.theta;
 
-    // Pocc = 0.9 - 0.9542
-    // Pfree = 0.4 - -0.176
+    // Pocc = 0.9 -> 0.9542
+    // Pfree = 0.4 -> -0.176
     float locc = 0.9542;
     float lfree = -0.176;
 
@@ -366,46 +366,30 @@ void Robot::mappingWithLogOddsUsingSonar()
 
         switch(i){
             case 0:
-                phi1 = 105;
-                phi2 = 75;
-                break;
+                phi = 105; break;
             case 1:
-                phi1 = 65;
-                phi2 = 35;
-                break;
+                phi = 65; break;
             case 2:
-                phi1 = 45;
-                phi2 = 15;
-                break;
+                phi = 45; break;
             case 3:
-                phi1 = 25;
-                phi2 = -15;
-                break;
+                phi = 25; break;
             case 4:
-                phi1 = 5;
-                phi2 = -25;
-                break;
+                phi = 5; break;
             case 5:
-                phi1 = -15;
-                phi2 = -45;
-                break;
+                phi = -15; break;
             case 6:
-                phi1 = -35;
-                phi2 = -65;
-                break;
+                phi = -35; break;
             case 7:
-                phi1 = -75;
-                phi2 = -105;
-                break;
+                phi = -75; break;
         }
 
         r = base.getMinSonarValueInRange(i, i);
-        cossine1 = cos(phi1*PI/180);
-        sine1 = sin(phi1*PI/180);
+        cossine1 = cos(phi*PI/180);
+        sine1 = sin(phi*PI/180);
 
         for(j = 0; j < 30; j++){
-            cossine1 = cos((phi1 + robotAngle - j)*PI/180);
-            sine1 = sin((phi1 + robotAngle - j)*PI/180);
+            cossine1 = cos((phi + robotAngle - j)*PI/180);
+            sine1 = sin((phi + robotAngle - j)*PI/180);
             celX = robotX + (r*cossine1) * scale;
             celY = robotY + (r*sine1) * scale;
             c = grid->getCell(celX, celY);
@@ -414,7 +398,7 @@ void Robot::mappingWithLogOddsUsingSonar()
             }
             c->occupancySonar = getOccupancyFromLogOdds(c->logoddsSonar);
             if(j == 14 && i == 3){
-                fprintf(stderr, "Sonar: %d, theta: %.2f, phi: %.2f, sonarValue: %.2f, celX: %d, celY: %d\n", i, robotAngle, phi1, r, celX, celY);
+                fprintf(stderr, "Sonar: %d, theta: %.2f, phi: %.2f, sonarValue: %.2f, celX: %d, celY: %d\n", i, robotAngle, phi, r, celX, celY);
                 fprintf(stderr, "Cell logodds: %.2f\n", c->logoddsSonar);
             }
 
