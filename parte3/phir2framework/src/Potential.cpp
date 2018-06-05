@@ -66,30 +66,42 @@ void Potential::run()
 void Potential::updateCellsTypes()
 {
     Cell* c;
+    int x, y;
 
-    // the type of a cell can be defined as:
-    // c->type = UNEXPLORED
-    // c->type = OCCUPIED
-    // c->type = FREE
+    // Limites usados quando a célula se encontra como UNEXPLORED
+    float initLimitOccupied = 0.6;
+    float initLimitFree = 0.4;
+    // Limites usados depois de a célula deixar de ser UNEXPLORED
+    float limitOccupied = 0.6;
+    float limitFree = 0.5;
 
-
-    // TODO: classify cells surrounding the robot
-    //
-    //  (curPose.x-radius,curPose.y+radius)  -------  (curPose.x+radius,curPose.y+radius)
-    //                     |                       \                         |
-    //                     |                        \                        |
-    //                     |                         \                       |
-    //  (curPose.x-radius,curPose.y-radius)  -------  (curPose.y+radius,curPose.y-radius)
-
-
-
-
-
+    for(x = (curPose.x-radius); x < (curPose.x+radius); x++){
+        for(y = (curPose.y-radius); y < (curPose.y+radius); y++){
+            // Percorre todas as celulas envolta do robô
+            c = grid->getCell(x,y);
+            if(c->type == UNEXPLORED){
+                if(c->occupancy >= initLimitOccupied){
+                    c->type = OCCUPIED;
+                }
+                else if(c->occupancy <= initLimitFree){
+                    c->type = FREE;
+                }
+            }
+            else{
+                if(c->type == OCCUPIED && c->occupancy <= limitFree){
+                    c->type == FREE;
+                }
+                else if(c->type == FREE && c->occupancy >= limitOccupied){
+                    c->type == OCCUPIED;
+                }
+            }
+        }
+    }
 }
 
 void Potential::expandObstacles()
 {
-    int width=3;
+    int width=2;
     Cell *c, *n;
 
     for(int i=curPose.x-radius;i<=curPose.x+radius;i++){
@@ -139,66 +151,55 @@ void Potential::initializePotentials()
 void Potential::iteratePotentials()
 {
     Cell* c;
-
-    // the potential of a cell is stored in:
-    // c->pot
-    // the preference of a cell is stored in:
-    // c->pref
-
+    int x, y;
+    float h, d;
     Cell *left,*right,*up,*down;
 
-    // the update of a FREE cell in position (i,j) will use the potential of the four adjacent cells
-    // where, for example:
-    //     left  = grid->getCell(i-1,j);
+    for(x = curLimits.minX; x < curLimits.maxX; x++){
+        for(y = curLimits.minY; y < curLimits.maxY; y++){
 
+            c = grid->getCell(x,y);
+            if(c->type == FREE){
+                left = grid->getCell(x-1, y);
+                right = grid->getCell(x+1, y);
+                up = grid->getCell(x, y+1);
+                down = grid->getCell(x, y-1);
 
-    // TODO: iterate the potential field in the known map (defined by curLimits)
-    //
-    //  (curLimits.minX,curLimits.maxY)  -------  (curLimits.maxX,curLimits.maxY)
-    //                     |                       \                         |
-    //                     |                        \                        |
-    //                     |                         \                       |
-    //  (curLimits.minX,curLimits.minY)  -------  (curLimits.maxX,curLimits.minY)
-
-
-
-
-
-
-
-
+                h = (left->pot + right->pot + up->pot + down->pot)/4;
+                d = abs(up->pot - down->pot)/2 + abs(right->pot - left->pot)/2;
+                c->pot = h - (c->pref/4)*d;
+            }
+        }
+    }
 }
 
 void Potential::updateGradient()
 {
     Cell* c;
-
-    // the components of the descent gradient of a cell are stored in:
-    // c->dirX and c->dirY
-
+    int x, y;
+    double norm;
     Cell *left,*right,*up,*down;
 
-    // the gradient of a FREE cell in position (i,j) is computed using the potential of the four adjacent cells
-    // where, for example:
-    //     left  = grid->getCell(i-1,j);
+    for(x = curLimits.minX; x < curLimits.maxX; x++){
+        for(y = curLimits.minY; y < curLimits.maxY; y++){
 
+            c = grid->getCell(x,y);
+            if(c->type == FREE){
+                left = grid->getCell(x-1, y);
+                right = grid->getCell(x+1, y);
+                up = grid->getCell(x, y+1);
+                down = grid->getCell(x, y-1);
 
-    // TODO: compute the gradient of the FREE cells in the known map (defined by curLimits)
-    //
-    //  (curLimits.minX,curLimits.maxY)  -------  (curLimits.maxX,curLimits.maxY)
-    //                     |                       \                         |
-    //                     |                        \                        |
-    //                     |                         \                       |
-    //  (curLimits.minX,curLimits.minY)  -------  (curLimits.maxX,curLimits.minY)
-
-
-
-
-
-
-
-
-
-
-
+                c->dirY = -(up->pot - down->pot)/2;
+                c->dirX = -(right->pot - left->pot)/2;
+                norm = sqrt(pow(c->dirX,2) + pow(c->dirY,2));
+                c->dirX /= norm;
+                c->dirY /= norm;
+            }
+            else{
+                c->dirX = 0;
+                c->dirY = 0;
+            }
+        }
+    }
 }

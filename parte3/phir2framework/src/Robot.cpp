@@ -277,23 +277,19 @@ void Robot::wallFollow()
 void Robot::followPotentialField()
 {
     int scale = grid->getMapScale();
-    int robotX=currentPose_.x*scale;
-    int robotY=currentPose_.y*scale;
+    int robotX = currentPose_.x*scale;
+    int robotY = currentPose_.y*scale;
     float robotAngle = currentPose_.theta;
+    float linVel, angVel, gradient, phi;
+    float tp = 0.05;
 
-    // how to access the grid cell associated to the robot position
-    Cell* c=grid->getCell(robotX,robotY);
+    Cell* c = grid->getCell(robotX,robotY);
+    gradient = atan2(c->dirY, c->dirX);
+    phi = RAD2DEG(gradient) - robotAngle;
+    phi = normalizeAngleDEG(phi);
 
-    float linVel, angVel;
-
-    // TODO: define the robot velocities using a control strategy
-    //       based on the direction of the gradient of c given by c->dirX and c->dirY
-
-
-
-
-
-
+    angVel = tp*phi;
+    linVel = 0.2;
 
     base.setWheelsVelocity_fromLinAngVelocity(linVel,angVel);
 }
@@ -316,7 +312,7 @@ void Robot::mappingWithLogOddsUsingLaser()
     float maxRange = base.getMaxLaserRange();
     int maxRangeInt = maxRange*scale;
     int i, celX, celY;
-    float phi, r;
+    float phi, r, width;
     float cossine, sine;
 
     int robotX = currentPose_.x * scale;
@@ -328,13 +324,8 @@ void Robot::mappingWithLogOddsUsingLaser()
     float locc = 0.9542 ;
     float lfree = -0.9542;
 
-    // how to access a grid cell
     Cell* c=grid->getCell(robotX,robotY);
-
-    // how to set occupancy of cell
     c->logodds += lfree;
-
-    // how to convert logodds to occupancy values
     c->occupancy = getOccupancyFromLogOdds(c->logodds);
 
     for(i = 0; i < 180; i++){
@@ -354,12 +345,21 @@ void Robot::mappingWithLogOddsUsingLaser()
         }
         c->occupancy = getOccupancyFromLogOdds(c->logodds);
 
-        if(i == 0 || i == 90 || i == 179){
-            fprintf(stderr, "Laser: %d, theta: %.2f, phi: %.2f, laserValue: %.2f, celX: %d, celY: %d\n", i, robotAngle, phi, r, celX, celY);
-            fprintf(stderr, "Cell logodds: %.2f\n", c->logodds);
-        }
+        width = 0;
+        while(width <= alpha){
 
-        r -= 0.2;
+            celX = robotX + ((r-width)*cossine) * scale;
+            celY = robotY + ((r-width)*sine) * scale;
+            c = grid->getCell(celX, celY);
+            if(c->logodds < 20){
+                c->logodds += locc;
+            }
+            c->occupancy = getOccupancyFromLogOdds(c->logodds);
+
+            width += 0.02;
+        }
+        r -= alpha;
+        // Preenche as células vazias até a primeira ocupada encontrada
         while(r > 0){
 
             celX = robotX + (r*cossine) * scale;
@@ -370,7 +370,7 @@ void Robot::mappingWithLogOddsUsingLaser()
                 c->logodds += lfree;
             }
             c->occupancy = getOccupancyFromLogOdds(c->logodds);
-            r -= 0.1;
+            r -= 0.02;
         }
     }
 }
@@ -440,10 +440,10 @@ void Robot::mappingWithLogOddsUsingSonar()
                 c->logoddsSonar += locc;
             }
             c->occupancySonar = getOccupancyFromLogOdds(c->logoddsSonar);
-            if(j == 14 && i == 3){
-                fprintf(stderr, "Sonar: %d, theta: %.2f, phi: %.2f, sonarValue: %.2f, celX: %d, celY: %d\n", i, robotAngle, phi, r, celX, celY);
-                fprintf(stderr, "Cell logodds: %.2f\n", c->logoddsSonar);
-            }
+            // if(j == 14 && i == 3){
+            //     fprintf(stderr, "Sonar: %d, theta: %.2f, phi: %.2f, sonarValue: %.2f, celX: %d, celY: %d\n", i, robotAngle, phi, r, celX, celY);
+            //     fprintf(stderr, "Cell logodds: %.2f\n", c->logoddsSonar);
+            // }
 
             currentR = r - 0.2;
             while(currentR > 0){
@@ -498,10 +498,10 @@ void Robot::mappingWithHIMMUsingLaser()
             c->himm += 3;
         }
 
-        if(i == 0 || i == 90 || i == 179){
-            fprintf(stderr, "Laser: %d, theta: %.2f, phi: %.2f, laserValue: %.2f, celX: %d, celY: %d\n", i, robotAngle, phi, r, celX, celY);
-            fprintf(stderr, "Cell HIMM: %i\n", c->himm);
-        }
+        // if(i == 0 || i == 90 || i == 179){
+        //     fprintf(stderr, "Laser: %d, theta: %.2f, phi: %.2f, laserValue: %.2f, celX: %d, celY: %d\n", i, robotAngle, phi, r, celX, celY);
+        //     fprintf(stderr, "Cell HIMM: %i\n", c->himm);
+        // }
 
         r -= 0.2;
         while(r > 0){
