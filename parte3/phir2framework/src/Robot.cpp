@@ -351,7 +351,7 @@ void Robot::mappingWithLogOddsUsingLaser()
             celX = robotX + ((r-width)*cossine) * scale;
             celY = robotY + ((r-width)*sine) * scale;
             c = grid->getCell(celX, celY);
-            if(c->logodds < 20){
+            if(c->logodds < 30){
                 c->logodds += locc;
             }
             c->occupancy = getOccupancyFromLogOdds(c->logodds);
@@ -366,7 +366,7 @@ void Robot::mappingWithLogOddsUsingLaser()
             celY = robotY + (r*sine) * scale;
 
             c = grid->getCell(celX, celY);
-            if(c->logodds > -20){
+            if(c->logodds > -30){
                 c->logodds += lfree;
             }
             c->occupancy = getOccupancyFromLogOdds(c->logodds);

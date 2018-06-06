@@ -4,6 +4,7 @@
 /// Métodos Públicos ///
 ////////////////////////
 
+
 Potential::Potential()
 {
     curPref = 0.0;
@@ -56,7 +57,6 @@ void Potential::run()
         iteratePotentials();
 
     updateGradient();
-
 }
 
 ////////////////////////
@@ -65,7 +65,7 @@ void Potential::run()
 
 void Potential::updateCellsTypes()
 {
-    Cell* c;
+    Cell *c;
     int x, y;
 
     // Limites usados quando a célula se encontra como UNEXPLORED
@@ -89,10 +89,10 @@ void Potential::updateCellsTypes()
             }
             else{
                 if(c->type == OCCUPIED && c->occupancy <= limitFree){
-                    c->type == FREE;
+                    c->type = FREE;
                 }
                 else if(c->type == FREE && c->occupancy >= limitOccupied){
-                    c->type == OCCUPIED;
+                    c->type = OCCUPIED;
                 }
             }
         }
@@ -101,7 +101,7 @@ void Potential::updateCellsTypes()
 
 void Potential::expandObstacles()
 {
-    int width=2;
+    int width=3;
     Cell *c, *n;
 
     for(int i=curPose.x-radius;i<=curPose.x+radius;i++){
