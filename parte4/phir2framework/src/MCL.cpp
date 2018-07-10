@@ -51,22 +51,34 @@ void MCL::sampling(const Action &u)
     /// TODO: propagar todas as particulas de acordo com o modelo de movimento baseado em odometria
     int i;
     double varRot1, varTrans, varRot2;
+    double alpha1, alpha2, alpha3, alpha4;
+
+    alpha1 = 1;
+    alpha2 = 1;
+    alpha3 = 1;
+    alpha4 = 1;
 
     /// Odometria definida pela estrutura Action, composta por 3 variaveis double:
     /// rot1, trans e rot2
     // std::cout << "rot1 " << RAD2DEG(u.rot1) << " trans " << u.trans << " rot2 " << RAD2DEG(u.rot2) << std::endl;
 
+    /*
     std::normal_distribution<double> sampler1(0.0, u.rot1+u.trans);
     std::normal_distribution<double> sampler2(0.0, u.trans+u.rot1+u.rot2);
     std::normal_distribution<double> sampler3(0.0, u.rot2+u.trans);
+    */
+
+    std::normal_distribution<double> samplerRot1(0.01, alpha1*u.rot1 + alpha2*u.trans);
+    std::normal_distribution<double> samplerTrans(0.01, alpha3*u.trans + alpha4*(u.rot1 + u.rot2));
+    std::normal_distribution<double> samplerRot2(0.01, alpha2*u.rot2 + alpha2*u.trans);
 
     for(i = 0; i < particles.size(); i++){
 
         /// Seguindo o modelo de Thrun, devemos gerar 3 distribuicoes normais, uma para cada componente da odometria
         /// Para definir uma distribuição normal X de media M e variancia V, pode-se usar:
-        varRot1 = u.rot1 - sampler1(*generator);
-        varTrans = u.trans - sampler2(*generator);
-        varRot2 = u.rot2 - sampler3(*generator);
+        varRot1 = u.rot1 - samplerRot1(*generator);
+        varTrans = u.trans - samplerTrans(*generator);
+        varRot2 = u.rot2 - samplerRot2(*generator);
 
         particles.at(i).p.x += varTrans*cos(particles.at(i).p.theta + varRot1);
         particles.at(i).p.y += varTrans*sin(particles.at(i).p.theta + varRot1);
@@ -79,7 +91,7 @@ void MCL::weighting(const std::vector<float> &z)
     // TODO: Verificar scala do mapa ao verificar se a celula é FREE
     int i, j;
     float zPart, zRobot, curProb;
-    float var = 200;
+    float var = 80;
     float mult, sum;
 
     sum = 0;
@@ -112,11 +124,15 @@ void MCL::weighting(const std::vector<float> &z)
         sum += particles.at(i).w;
     }
     if(sum == 0){
-        sum = 1;
+        printf("SOMA DEU ZERO\n");
+        for(i = 0; i < particles.size(); i++){
+            particles.at(i).w = 1.0/particles.size();
+        }
     }
-
-    for(i = 0; i < particles.size(); i++){
-        particles.at(i).w = particles.at(i).w/sum;
+    else{
+        for(i = 0; i < particles.size(); i++){
+            particles.at(i).w = particles.at(i).w/sum;
+        }
     }
 }
 
@@ -127,21 +143,22 @@ void MCL::resampling()
     float r, c, u;
     int i, j;
 
-    r = rand() % ((float)1/particles.size())
+    std::uniform_real_distribution<double> samplerU(0, 1.0/particles.size());
 
-    if(r != 0){
-        printf("Random number: %f\n", r);
-    }
-
+    r = samplerU(*generator);
     c = particles.at(0).w;
-    i = 1;
-    for(j = 1; j < particles.size(); j++){
-        u = r + (1/particles.size())*(j-1);
+    i = 0;
+    for(j = 1; j <= particles.size(); j++){
+        u = r + (float)(1.0/(float)particles.size())*(j-1);
         while(u > c){
             i++;
-            c += particles.at(i-1).w;
+            if(i >= particles.size()){
+                i--;
+                break;
+            }
+            c += particles.at(i).w;
         }
-        nextGeneration.push_back(particles.at(i-1));
+        nextGeneration.push_back(particles.at(i));
     }
 
     particles = nextGeneration;
@@ -269,9 +286,9 @@ void MCL::initParticles()
             // sample particle pose
             particles[i].p.x = randomX(*generator);
             particles[i].p.y = randomY(*generator);
-            // particles[i].p.theta = randomTh(*generator);
+            particles[i].p.theta = randomTh(*generator);
             //TODO: Descomentar
-            particles[i].p.theta = 0;
+            // particles[i].p.theta = 0;
 
             // check if particle is valid (known and not obstacle)
             if(mapCells[(int)(particles[i].p.x*scale)][(int)(particles[i].p.y*scale)] == FREE)

@@ -34,5 +34,8 @@ clean:
 run:
 	../build-make/program sim -m 4loops.txt -p sensors-4loops.txt
 
+debug:
+	cgdb --args ../build-make/program sim -m 4loops.txt -p sensors-4loops.txt
+
 add:
 	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/Aria/lib
