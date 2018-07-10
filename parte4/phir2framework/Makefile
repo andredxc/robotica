@@ -34,4 +34,5 @@ clean:
 run:
 	../build-make/program sim -m 4loops.txt -p sensors-4loops.txt
 
-	# export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/Aria/lib
+add:
+	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/Aria/lib

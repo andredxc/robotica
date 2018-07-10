@@ -54,7 +54,7 @@ void MCL::sampling(const Action &u)
 
     /// Odometria definida pela estrutura Action, composta por 3 variaveis double:
     /// rot1, trans e rot2
-    std::cout << "rot1 " << RAD2DEG(u.rot1) << " trans " << u.trans << " rot2 " << RAD2DEG(u.rot2) << std::endl;
+    // std::cout << "rot1 " << RAD2DEG(u.rot1) << " trans " << u.trans << " rot2 " << RAD2DEG(u.rot2) << std::endl;
 
     std::normal_distribution<double> sampler1(0.0, u.rot1+u.trans);
     std::normal_distribution<double> sampler2(0.0, u.trans+u.rot1+u.rot2);
@@ -70,13 +70,13 @@ void MCL::sampling(const Action &u)
 
         particles.at(i).p.x += varTrans*cos(particles.at(i).p.theta + varRot1);
         particles.at(i).p.y += varTrans*sin(particles.at(i).p.theta + varRot1);
-        particles.at(i).p.theta += varRot1 + varRot2;
+        particles.at(i).p.theta += (varRot1 + varRot2);
     }
 }
 
 void MCL::weighting(const std::vector<float> &z)
 {
-    /// TODO: faça a pesagem de todas as particulas
+    // TODO: Verificar scala do mapa ao verificar se a celula é FREE
     int i, j;
     float zPart, zRobot, curProb;
     float var = 200;
@@ -111,14 +111,12 @@ void MCL::weighting(const std::vector<float> &z)
         // 3: normalize os pesos
         sum += particles.at(i).w;
     }
-
     if(sum == 0){
         sum = 1;
     }
 
     for(i = 0; i < particles.size(); i++){
-
-        particles.at(i).w /= sum;
+        particles.at(i).w = particles.at(i).w/sum;
     }
 }
 
@@ -129,17 +127,21 @@ void MCL::resampling()
     float r, c, u;
     int i, j;
 
+    r = rand() % ((float)1/particles.size())
 
-    r = rand()% (1/particles.size() + 1);
-    c = particles.at(1).w;
-    i = 0;
-    for(j = 0; j < particles.size(); j++){
+    if(r != 0){
+        printf("Random number: %f\n", r);
+    }
+
+    c = particles.at(0).w;
+    i = 1;
+    for(j = 1; j < particles.size(); j++){
         u = r + (1/particles.size())*(j-1);
         while(u > c){
             i++;
-            c += particles.at(i).w;
+            c += particles.at(i-1).w;
         }
-        nextGeneration.push_back(particles.at(i));
+        nextGeneration.push_back(particles.at(i-1));
     }
 
     particles = nextGeneration;
@@ -267,7 +269,9 @@ void MCL::initParticles()
             // sample particle pose
             particles[i].p.x = randomX(*generator);
             particles[i].p.y = randomY(*generator);
-            particles[i].p.theta = randomTh(*generator);
+            // particles[i].p.theta = randomTh(*generator);
+            //TODO: Descomentar
+            particles[i].p.theta = 0;
 
             // check if particle is valid (known and not obstacle)
             if(mapCells[(int)(particles[i].p.x*scale)][(int)(particles[i].p.y*scale)] == FREE)
